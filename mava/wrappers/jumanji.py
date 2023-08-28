@@ -92,6 +92,9 @@ class LogWrapper(Wrapper):
         )
         return state, timestep
 
+    def reward_spec(self):
+        return self._env.reward_spec()
+
 
 class AgentIDWrapper(Wrapper):
     """Add onehot agent IDs to observation."""
@@ -144,7 +147,6 @@ class AgentIDWrapper(Wrapper):
         """Step the environment."""
         state, timestep = self._env.step(state, action)
         timestep.observation = self._add_agent_ids(timestep, self._env.num_agents)
-
         return state, timestep
 
     def observation_spec(self) -> specs.Spec[Observation]:
@@ -169,6 +171,9 @@ class AgentIDWrapper(Wrapper):
         return self._env.observation_spec().replace(
             agents_view=agents_view,
         )
+
+    def reward_spec(self):
+        return self._env.reward_spec()
 
 
 class RwareMultiAgentWrapper(Wrapper):
@@ -204,6 +209,9 @@ class RwareMultiAgentWrapper(Wrapper):
             "step_count",
         )
         return self._env.observation_spec().replace(step_count=step_count)
+
+    def reward_spec(self):
+        return self._env.reward_spec()
 
 
 class RwareMultiAgentWithGlobalStateWrapper(Wrapper):
@@ -266,3 +274,6 @@ class RwareMultiAgentWithGlobalStateWrapper(Wrapper):
             global_state=global_state,
             step_count=step_count,
         )
+
+    def reward_spec(self):
+        return self._env.reward_spec()

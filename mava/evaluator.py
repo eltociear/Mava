@@ -78,7 +78,7 @@ def get_ff_evaluator_fn(
             init_eval_state.env_state,
             init_eval_state.timestep,
             0,
-            0.0,
+            jnp.zeros(4),
         )
 
         final_state = jax.lax.while_loop(
@@ -112,7 +112,13 @@ def get_ff_evaluator_fn(
         reshape_step_rngs = lambda x: x.reshape(eval_batch, -1)
         step_rngs = reshape_step_rngs(jnp.stack(step_rngs))
 
-        eval_state = EvalState(step_rngs, env_states, timesteps)
+        eval_state = EvalState(
+            step_rngs,
+            env_states,
+            timesteps,
+            # step_count_=jnp.array([0]),
+            # return_=jnp.zeros(env.reward_spec().shape),
+        )
         eval_metrics = jax.vmap(eval_one_episode, in_axes=(None, 0), axis_name="eval_batch")(
             trained_params, eval_state
         )

@@ -30,6 +30,8 @@ from colorama import Fore, Style
 from flax.core.frozen_dict import FrozenDict
 from flax.linen.initializers import constant, orthogonal
 from jumanji.env import Environment
+from jumanji.environments.routing.lbf.env import LevelBasedForaging
+from jumanji.environments.routing.lbf.generator import UniformRandomGenerator
 from jumanji.environments.routing.robot_warehouse.generator import RandomGenerator
 from jumanji.types import Observation
 from jumanji.wrappers import AutoResetWrapper
@@ -143,10 +145,13 @@ def get_learner_fn(
             env_state, timestep = jax.vmap(env.step, in_axes=(0, 0))(env_state, action)
 
             # LOG EPISODE METRICS
-            done, reward = jax.tree_util.tree_map(
-                lambda x: jnp.repeat(x, config["num_agents"]).reshape(config["num_envs"], -1),
-                (timestep.last(), timestep.reward),
-            )
+            # done, reward = jax.tree_util.tree_map(
+            #     lambda x: jnp.repeat(x, config["num_agents"]).reshape(config["num_envs"], -1),
+            #     (timestep.last(), timestep.reward),
+            # )
+            done = jnp.asarray(1.0 - timestep.discount).astype(bool)
+            reward = timestep.reward
+
             info = {
                 "episode_return": env_state.episode_return_info,
                 "episode_length": env_state.episode_length_info,
@@ -487,15 +492,20 @@ def run_experiment(_run: run.Run, _config: Dict, _log: SacredLogger) -> None:
     log, stop_logger = logger_setup(_run, config, _log)
 
     # Create envs
-    generator = RandomGenerator(**config["rware_scenario"]["task_config"])
-    env = jumanji.make(config["env_name"], generator=generator)
+    # generator = RandomGenerator(**config["rware_scenario"]["task_config"])
+    # env = jumanji.make(config["env_name"], generator=generator)
+    gen = UniformRandomGenerator(
+        grid_size=10, num_agents=3, num_food=3, max_agent_level=2, max_food_level=6
+    )
+    env = LevelBasedForaging(generator=gen)
     env = RwareMultiAgentWrapper(env)
     # Add agent id to observation.
     if config["add_agent_id"]:
         env = AgentIDWrapper(env)
     env = AutoResetWrapper(env)
     env = LogWrapper(env)
-    eval_env = jumanji.make(config["env_name"], generator=generator)
+    # eval_env = jumanji.make(config["env_name"], generator=generator)
+    eval_env = LevelBasedForaging(generator=gen)
     eval_env = RwareMultiAgentWrapper(eval_env)
     if config["add_agent_id"]:
         eval_env = AgentIDWrapper(eval_env)
