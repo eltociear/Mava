@@ -78,7 +78,7 @@ def get_ff_evaluator_fn(
             init_eval_state.env_state,
             init_eval_state.timestep,
             0,
-            jnp.zeros(4),
+            jnp.zeros(3),
         )
 
         final_state = jax.lax.while_loop(
