@@ -8,7 +8,7 @@ defaults:
 # --- Environment ---
 env_name: RobotWarehouse-v0
 
-num_envs: 16  # Number of vectorised environments per device.
+num_envs: 64  # Number of vectorised environments per device.
 num_updates: 1000 # Number of updates
 seed: 42
 
@@ -45,6 +45,6 @@ use_sacred: True
 base_exp_path: results
 system_name: ~  # this is manually set inside each file depending on which system is run
 # Neptune logging
-use_neptune: False
-neptune_tag: [rware]
+use_neptune: True
+neptune_tag: [test,lbf,sum-return]
 name: None # Unique ID from logging.

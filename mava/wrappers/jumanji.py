@@ -78,7 +78,7 @@ class LogWrapper(Wrapper):
         done = timestep.last()
         not_done = 1 - done
 
-        new_episode_return = state.episode_returns + jnp.mean(timestep.reward)
+        new_episode_return = state.episode_returns + jnp.sum(timestep.reward)
         new_episode_length = state.episode_lengths + 1
         episode_return_info = state.episode_return_info * not_done + new_episode_return * done
         episode_length_info = state.episode_length_info * not_done + new_episode_length * done
