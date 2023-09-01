@@ -113,7 +113,7 @@ pip install -e .
 ```
 
 We have tested `Mava` on Python 3.9. Note that because the installation of JAX differs depending on your hardware accelerator,
-we advise users to explicitly install the correct JAX version (see the [official installation guide](https://github.com/google/jax#installation)). For more in-depth installation guides including Docker builds and virtual environments, please see our [detailed installation guide](DETAILED_INSTALL.md).
+we advise users to explicitly install the correct JAX version (see the [official installation guide](https://github.com/google/jax#installation)). For more in-depth installation guides including Docker builds and virtual environments, please see our [detailed installation guide](./docs/DETAILED_INSTALL.md).
 
 ## Quickstart ⚡
 
@@ -121,7 +121,7 @@ We have a [Quickstart notebook][quickstart] that can be used to quickly create a
 
 ## Contributing 🤝
 
-Please read our [contributing docs](./CONTRIBUTING.md) for details on how to submit pull requests, our Contributor License Agreement and community guidelines.
+Please read our [contributing docs](./docs/CONTRIBUTING.md) for details on how to submit pull requests, our Contributor License Agreement and community guidelines.
 
 ## Roadmap 🛤️
 
@@ -161,7 +161,7 @@ If you use Mava in your work, please cite the accompanying
 ```
 
 [Paper]: https://arxiv.org/pdf/2107.01460.pdf
-[quickstart]: https://github.com/instadeepai/Mava/blob/develop/Quickstart.ipynb
+[quickstart]: https://github.com/instadeepai/Mava/blob/develop/mava/Quickstart.ipynb
 [jumanji]: https://github.com/instadeepai/jumanji
 [cleanrl]: https://github.com/vwxyzjn/cleanrl
 [purejaxrl]: https://github.com/luchris429/purejaxrl
