@@ -59,17 +59,17 @@ Mava currently offers the following building blocks for MARL research:
 
 All of the experiments below were performed using an NVIDIA Quadro RTX 4000 GPU with 8GB Memory.
 
-In order to show the utility of end-to-end JAX-based MARL systems and JAX-based environments we compare the speed of Mava against [EPyMARL][epymarl] as measured in total training wallclock time on simple [Robotic Warehouse][rware] (RWARE) tasks with 2 and 4 agents. Our aim is to illustrate the speed increases that are possible with using end-to-end Jax-based systems and we do not necessarily make an effort to achieve optimal performance. For EPyMARL, we use the hyperparameters as recommended by [Papoudakis et al. (2020)](https://arxiv.org/pdf/2006.07869.pdf) and for Mava we performed a basic grid search. In both cases, systems were trained up to 20 million total environment steps using 16 vectorised environments.
+In order to show the utility of end-to-end JAX-based MARL systems and JAX-based environments we compare the speed of Mava against [EPyMARL][epymarl] as measured in total training wallclock time on simple [Robotic Warehouse][rware] (RWARE) tasks with 2 and 4 agents. Our aim is to illustrate the speed increases that are possible with using end-to-end Jax-based systems and we do not necessarily make an effort to achieve optimal performance. For EPyMARL, we use the hyperparameters as recommended by [Papoudakis et al. (2020)](https://arxiv.org/pdf/2006.07869.pdf) and for Mava we performed a basic grid search. In both cases, systems were trained up to 20 million total environment steps. For EPyMARL we use multithreading to run 16 parallel environments and for Mava we use `vmap` to run 16, 128, 256 and 512 vectorised environments.
 
 <p align="center">
-    <a href="docs/images/rware_results/ff_mappo/tiny-2ag.png">
-        <img src="docs/images/rware_results/ff_mappo/tiny-2ag.png" alt="Mava ff mappo tiny 2ag" width="80%" style="display:inline-block; margin-right: 10px;"/>
+    <a href="docs/images/rware_results_multi_envs/ff_mappo/tiny-2ag.png">
+        <img src="docs/images/rware_results_multi_envs/ff_mappo/tiny-2ag.png" alt="Mava ff mappo tiny 2ag" width="80%" style="display:inline-block; margin-right: 10px;"/>
     </a>
-    <a href="docs/images/rware_results/ff_mappo/tiny-4ag.png">
-        <img src="docs/images/rware_results/ff_mappo/tiny-4ag.png" alt="Mava ff mappo tiny 4ag" width="40%" style="display:inline-block; margin-right: 10px;"/>
+    <a href="docs/images/rware_results_multi_envs/ff_mappo/tiny-4ag.png">
+        <img src="docs/images/rware_results_multi_envs/ff_mappo/tiny-4ag.png" alt="Mava ff mappo tiny 4ag" width="40%" style="display:inline-block; margin-right: 10px;"/>
     </a>
-    <a href="docs/images/rware_results/ff_mappo/small-4ag.png">
-        <img src="docs/images/rware_results/ff_mappo/small-4ag.png" alt="Mava ff mappo small 4ag" width="40%" style="display:inline-block; margin-right: 10px;"/>
+    <a href="docs/images/rware_result_multi_envss/ff_mappo/small-4ag.png">
+        <img src="docs/images/rware_results_multi_envs/ff_mappo/small-4ag.png" alt="Mava ff mappo small 4ag" width="40%" style="display:inline-block; margin-right: 10px;"/>
     </a>
     <br>
     <div style="text-align:center; margin-top: 10px;"> Mava feedforward MAPPO performance on the <code>tiny-2ag</code>, <code>tiny-4ag</code> and <code>small-4ag</code> RWARE tasks.</div>
@@ -85,10 +85,10 @@ Furthermore, we illustrate the speed of Mava by showing the steps per second as 
 
 <p align="center">
     <a href="docs/images/speed_results/mava_sps_results.png">
-        <img src="docs/images/speed_results/mava_sps_results.png" alt="Mava sps" width="50%"/>
+        <img src="docs/images/speed_results/mava_sps_results.png" alt="Mava sps" width="49%"/>
     </a>
     <a href="docs/images/speed_results/ff_mappo_speed_comparison.png">
-        <img src="docs/images/speed_results/ff_mappo_speed_comparison.png" alt="Mava ff mappo speed comparison" width="50%" style="display:inline-block; margin-right: 10px;"/>
+        <img src="docs/images/speed_results/ff_mappo_speed_comparison.png" alt="Mava ff mappo speed comparison" width="49%" style="display:inline-block; margin-right: 10px;"/>
     </a>
     <br>
     <div style="text-align:center; margin-top: 10px;"> Mava steps per second scaling with increased vectorised environments and total training run time for 20M environment steps.</div>
