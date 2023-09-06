@@ -110,13 +110,11 @@ class AgentIDWrapper(Wrapper):
         agent_ids = jnp.eye(num_agents)
         new_agents_view = jnp.concatenate([agent_ids, timestep.observation.agents_view], axis=-1)
 
-        # we really should rather do this:
-        # timestep.observation = timestep.observation._replace(agents_view=new_agents_view)
-        # just need to check that this doesn't affect timing
         if self.has_global_state:
             # Add the agent IDs to the global state
-            replicated_global_state = jnp.tile(timestep.observation.global_state, (num_agents, 1))
-            new_global_state = jnp.concatenate([agent_ids, replicated_global_state], axis=-1)
+            new_global_state = jnp.concatenate(
+                [agent_ids, timestep.observation.global_state], axis=-1
+            )
 
             return ObservationGlobalState(
                 agents_view=new_agents_view,
@@ -226,6 +224,7 @@ class RwareMultiAgentWithGlobalStateWrapper(Wrapper):
         """Reset the environment. Updates the step count."""
         state, timestep = self._env.reset(key)
         global_state = jnp.concatenate(timestep.observation.agents_view, axis=0)
+        global_state = jnp.tile(global_state, (self._env.num_agents, 1))
         timestep.observation = ObservationGlobalState(
             agents_view=timestep.observation.agents_view,
             action_mask=timestep.observation.action_mask,
@@ -238,6 +237,7 @@ class RwareMultiAgentWithGlobalStateWrapper(Wrapper):
         """Step the environment. Updates the step count."""
         state, timestep = self._env.step(state, action)
         global_state = jnp.concatenate(timestep.observation.agents_view, axis=0)
+        global_state = jnp.tile(global_state, (self._env.num_agents, 1))
         timestep.observation = ObservationGlobalState(
             agents_view=timestep.observation.agents_view,
             action_mask=timestep.observation.action_mask,
@@ -256,7 +256,9 @@ class RwareMultiAgentWithGlobalStateWrapper(Wrapper):
             (self._env.num_agents, 5), bool, False, True, "action_mask"
         )
         global_state = specs.Array(
-            (self._env.num_agents * self._env.num_obs_features,), jnp.int32, "global_state"
+            (self._env.num_agents, self._env.num_agents * self._env.num_obs_features),
+            jnp.int32,
+            "global_state",
         )
         step_count = specs.BoundedArray(
             (self._env.num_agents,),
