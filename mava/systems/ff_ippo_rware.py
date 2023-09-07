@@ -30,8 +30,8 @@ from flax.core.frozen_dict import FrozenDict
 from flax.linen.initializers import constant, orthogonal
 from jumanji.env import Environment
 from jumanji.environments.routing.lbf.env import LevelBasedForaging
-from jumanji.environments.routing.lbf.generator import UniformRandomGenerator
-from jumanji.environments.routing.robot_warehouse.generator import RandomGenerator
+from jumanji.environments.routing.lbf.generator import RandomGenerator
+from jumanji.environments.routing.lbf.observer import VectorObserver
 from jumanji.types import Observation
 from jumanji.wrappers import AutoResetWrapper
 from omegaconf import DictConfig, OmegaConf
@@ -493,10 +493,11 @@ def run_experiment(_run: run.Run, _config: Dict, _log: SacredLogger) -> None:
     # Create envs
     # generator = RandomGenerator(**config["rware_scenario"]["task_config"])
     # env = jumanji.make(config["env_name"], generator=generator)
-    gen = UniformRandomGenerator(
+    gen = RandomGenerator(
         grid_size=10, num_agents=3, num_food=3, max_agent_level=2, max_food_level=6
     )
-    env = LevelBasedForaging(generator=gen)
+    observer = VectorObserver(fov=11, grid_size=10)
+    env = LevelBasedForaging(generator=gen, observer=observer)
     env = RwareMultiAgentWrapper(env)
     # Add agent id to observation.
     if config["add_agent_id"]:
@@ -504,7 +505,7 @@ def run_experiment(_run: run.Run, _config: Dict, _log: SacredLogger) -> None:
     env = AutoResetWrapper(env)
     env = LogWrapper(env)
     # eval_env = jumanji.make(config["env_name"], generator=generator)
-    eval_env = LevelBasedForaging(generator=gen)
+    eval_env = LevelBasedForaging(generator=gen, observer=observer)
     eval_env = RwareMultiAgentWrapper(eval_env)
     if config["add_agent_id"]:
         eval_env = AgentIDWrapper(eval_env)

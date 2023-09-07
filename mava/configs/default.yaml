@@ -45,6 +45,7 @@ use_sacred: True
 base_exp_path: results
 system_name: ~  # this is manually set inside each file depending on which system is run
 # Neptune logging
-use_neptune: True
-neptune_tag: [test,lbf,sum-return]
+use_neptune: False
+neptune_project: InstaDeep/mava
+neptune_tag: [lbf]
 name: None # Unique ID from logging.

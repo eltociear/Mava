@@ -101,7 +101,7 @@ class AgentIDWrapper(Wrapper):
 
     def __init__(self, env: Environment, has_global_state: bool = False):
         super().__init__(env)
-        self.num_obs_features = self._env.num_obs_features + self._env.num_agents
+
         self.has_global_state = has_global_state
 
     def _add_agent_ids(
@@ -149,13 +149,18 @@ class AgentIDWrapper(Wrapper):
 
     def observation_spec(self) -> specs.Spec[Observation]:
         """Specification of the observation of the `RobotWarehouse` environment."""
+        # note: this assumes an observation shape of (n_agents, obs)
+        # 1 dimensional per agent
+        observation_size = self._env.observation_spec().agents_view.shape[1]
         agents_view = specs.Array(
-            (self._env.num_agents, self.num_obs_features), jnp.int32, "agents_view"
+            (self._env.num_agents, observation_size + self._env.num_agents),
+            jnp.int32,
+            "agents_view",
         )
         global_state = specs.Array(
             (
                 self._env.num_agents,
-                self._env.num_obs_features * self._env.num_agents + self._env.num_agents,
+                observation_size * self._env.num_agents + self._env.num_agents,
             ),
             jnp.int32,
             "global_state",
