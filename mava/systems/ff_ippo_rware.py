@@ -43,7 +43,9 @@ from mava.types import ExperimentOutput, LearnerState, OptStates, Params, PPOTra
 from mava.utils.jax import merge_leading_dims
 from mava.utils.logger_tools import config_copy, get_experiment_path, get_logger
 from mava.utils.timing_utils import TimeIt
-from mava.wrappers.jumanji import AgentIDWrapper, LogWrapper, RwareMultiAgentWrapper
+from mava.wrappers.agent_id_wrapper import AgentIDWrapper
+from mava.wrappers.jumanji import RwareMultiAgentWrapper
+from mava.wrappers.log_wrapper import LogWrapper
 
 
 class Actor(nn.Module):

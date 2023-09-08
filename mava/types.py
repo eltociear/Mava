@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Dict, NamedTuple, Optional
 
 import chex
 from flax.core.frozen_dict import FrozenDict
-from jumanji.environments.routing.robot_warehouse import State
 from jumanji.types import TimeStep
 from optax._src.base import OptState
 
-from mava.wrappers.jumanji import LogEnvState
+if TYPE_CHECKING:  # https://github.com/python/mypy/issues/6239
+    from dataclasses import dataclass
+else:
+    from flax.struct import dataclass
+
+State = Any
 
 
 class PPOTransition(NamedTuple):
@@ -54,6 +58,19 @@ class HiddenStates(NamedTuple):
 
     policy_hidden_state: chex.Array
     critic_hidden_state: chex.Array
+
+
+# todo: we should consider putting this stuff in timestep.extras
+@dataclass
+class LogEnvState:
+    """State of the `LogWrapper`."""
+
+    env_state: State
+    episode_returns: chex.Numeric
+    episode_lengths: chex.Numeric
+    # Information about the episode return and length for logging purposes.
+    episode_return_info: chex.Numeric
+    episode_length_info: chex.Numeric
 
 
 class LearnerState(NamedTuple):
