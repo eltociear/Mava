@@ -36,9 +36,9 @@ class MavaWrapper(Wrapper, ABC):
     @property
     def num_agents(self) -> int:
         """Number of agents in the environment."""
-        return self._env.num_agents
+        return self._env.num_agents  # type: ignore
 
     @property
     def time_limit(self) -> int:
         """Time limit for the environment."""
-        return self._env.num_agents
+        return self._env.num_agents  # type: ignore

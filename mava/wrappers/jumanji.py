@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, NamedTuple, Tuple
+from typing import Tuple
 
 import chex
 import jax.numpy as jnp
@@ -81,7 +81,7 @@ class RwareGlobalStateWrapper(GlobalStateWrapper):
         super().__init__(env)
         self._env: RwareMultiAgentWrapper
 
-    def get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
+    def _get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
         global_state = jnp.concatenate(timestep.observation.agents_view, axis=0)
         global_state = jnp.tile(global_state, (self._env.num_agents, 1))
         return global_state

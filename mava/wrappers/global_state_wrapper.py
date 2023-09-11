@@ -13,32 +13,16 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from collections import namedtuple
-from typing import Any, NamedTuple, Tuple
+from typing import Optional, Tuple
 
 import chex
 import jax.numpy as jnp
 from jumanji import specs
-from jumanji.env import Environment
 from jumanji.types import TimeStep
 
 from mava.types import State
+from mava.wrappers.agent_id_wrapper import AgentIDWrapper
 from mava.wrappers.base import MavaWrapper
-
-# todo: jumanji does not allow for nested observations...
-# could put it in timestep.extras, but then no spec - get_global_state_spec() and get_global_state()
-# could create namedtuple at runtime, but yuck (maybe its not so bad cause duck typing?)
-# could create an observation per env, but then not general
-# class ObservationGlobalState(NamedTuple):
-#     """The observation that the agent sees.
-#
-#     observation: the observation of the agents.
-#     global_state: the global state of the environment, which can the
-#         concatenation of the agents' observations or a defined global state.
-#     """
-#
-#     observation: Any
-#     global_state: chex.Array
 
 
 class GlobalStateWrapper(MavaWrapper, ABC):
@@ -49,58 +33,131 @@ class GlobalStateWrapper(MavaWrapper, ABC):
     by concatenating the observations of all agents.
     """
 
-    def __init__(self, env: Environment):
-        super().__init__(env)
+    GLOBAL_STATE = "global_state"
 
-        # creating observation global state at runtime...not sure I like this?
-        # creates a namedtuple with the same fields as the observation along with global_state
-        observation = env.observation_spec().generate_value()
-        self.ObservationGlobalState = namedtuple(
-            "ObservationGlobalState", observation._fields + ("global_state",)
-        )
+    # just for type checking
+    def __init__(self, env: MavaWrapper):
+        super().__init__(env)
+        self._env: MavaWrapper
 
     @abstractmethod
-    def get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
+    def _get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
         """Get the global state of the environment."""
         pass
 
-    def reset(self, key: chex.PRNGKey) -> Tuple[State, TimeStep]:
-        """Reset the environment. Updates the step count."""
-        state, timestep = self._env.reset(key)
+    @abstractmethod
+    def global_state_spec(self) -> specs.Array:
+        """Get the global state spec."""
+        pass
 
-        global_state = self.get_global_state(state, timestep)
-        timestep.observation = self.ObservationGlobalState(
-            observation=timestep.observation, global_state=global_state
-        )
+
+class DefaultGlobalStateWrapper(GlobalStateWrapper):
+    """The default global state wrapper, this will work for observations that are
+    of shape (num_agents, num_features) and live in `timestep.observation.agents_view`.
+
+    By default the global state is the concatenation of the agents' observations.
+
+    Places the global state in `timestep.observation.extras[global_state]`.
+    """
+
+    def reset(self, key: chex.PRNGKey) -> Tuple[State, TimeStep]:
+        state, timestep = super().reset(key)
+        extras = timestep.observation.extras or {}  # create if not exists
+        extras[self.GLOBAL_STATE] = self._get_global_state(state, timestep)
+        timestep.observation.extras = extras
 
         return state, timestep
 
     def step(self, state: State, action: chex.Array) -> Tuple[State, TimeStep]:
-        """Step the environment. Updates the step count."""
-        state, timestep = self._env.step(state, action)
-
-        global_state = self.get_global_state(state, timestep)
-        timestep.observation = self.ObservationGlobalState(
-            observation=timestep.observation, global_state=global_state
-        )
+        state, timestep = super().step(state, action)
+        extras = timestep.extras or {}  # create if not exists
+        extras["global_state"] = self._get_global_state(state, timestep)
+        timestep.observation.extras = extras
 
         return state, timestep
 
-    def observation_spec(self) -> specs.Spec:
-        # todo: agents_view is not general :(
-        # Don't want to have to make a custom one of these for each env
-        print(self._env.observation_spec())
-        print(self._env.observation_spec().agents_view)
+    def _get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
+        """Get the global state of the environment."""
+        global_state = jnp.concatenate(timestep.observation.agents_view, axis=0)
+        return jnp.tile(global_state, (self._env.num_agents, 1))
+
+    def global_state_spec(self) -> specs.Array:
         obs_features = self._env.observation_spec().agents_view.shape[1]
-        global_state = specs.Array(
-            (self._env.num_agents, self._env.num_agents * obs_features),
+        return specs.Array(
+            (self._env.num_agent, self._env.num_agents * obs_features),
             jnp.int32,
             "global_state",
         )
 
-        return specs.Spec(
-            self.ObservationGlobalState,
-            "ObservationSpec",
-            observation=self._env.observation_spec(),
-            global_state=global_state,
-        )
+
+class GlobalStateWithAgentIDWrapper(GlobalStateWrapper):
+    def __init__(
+        self,
+        env: MavaWrapper,
+        global_state_wrapper: Optional[GlobalStateWrapper] = None,
+        agent_id_wrapper: Optional[AgentIDWrapper] = None,
+    ):
+        """Adds global state observation and agent IDs to the environment.
+        Global state is added in timestep.extras[global_state] and agent IDs are added
+        are added to both the global state and timestep.observation.agents_view.
+
+        Any type of global state can be added by passing a custom global_state_wrapper, by default
+        this is `DefaultGlobalStateWrapper` which concatenates the agents' observations. Similarly,
+        any type of agent ID wrapper can be passed, by default this is `AgentIDWrapper` which adds
+        agent IDs to the `observation.agents_view`.
+
+        Args:
+            env: the environment to wrap.
+            global_state_wrapper: the global state wrapper to use.
+            agent_id_wrapper: the agent ID wrapper to use.
+        """
+        super().__init__(env)
+        self._global_state_wrapper = global_state_wrapper or DefaultGlobalStateWrapper(env)
+        self._agent_id_wrapper = agent_id_wrapper or AgentIDWrapper(env)
+
+    def reset(self, key: chex.PRNGKey) -> Tuple[State, TimeStep]:
+        state, timestep = self._env.reset(key)
+
+        # get global state - must be before adding agent IDs to observation
+        global_state = self._global_state_wrapper._get_global_state(state, timestep)
+        # add agent IDs to global state
+        global_state = self._agent_id_wrapper._add_agent_ids(global_state, self._env.num_agents)
+
+        # put it in timestep.extras
+        extras = timestep.extras or {}  # create if not exists
+        extras[self.GLOBAL_STATE] = global_state
+        timestep.extras = global_state
+
+        # add agent IDs to observation.agents_view
+        agents_view = timestep.observation.agents_view
+        new_view = self._agent_id_wrapper._add_agent_ids(agents_view, self._env.num_agents)
+        timestep.observation = timestep.observation._replace(agents_view=new_view)
+
+        return state, timestep
+
+    def step(self, state: State, action: chex.Array) -> Tuple[State, TimeStep]:
+        state, timestep = self._env.step(state, action)
+
+        # get global state - must be before adding agent IDs to observation
+        global_state = self._global_state_wrapper._get_global_state(state, timestep)
+        # add agent IDs to global state
+        global_state = self._agent_id_wrapper._add_agent_ids(global_state, self._env.num_agents)
+
+        # put it in timestep.extras
+        extras = timestep.extras or {}  # create if not exists
+        extras[self.GLOBAL_STATE] = global_state
+        timestep.extras = global_state
+
+        # add agent IDs to observation.agents_view
+        agents_view = timestep.observation.agents_view
+        new_view = self._agent_id_wrapper._add_agent_ids(agents_view, self._env.num_agents)
+        timestep.observation = timestep.observation._replace(agents_view=new_view)
+
+        return state, timestep
+
+    def global_state_spec(self) -> specs.Array:
+        global_state_spec = self._global_state_wrapper.global_state_spec()
+        global_state_shape = global_state_spec.shape
+        new_shape = (global_state_shape[0], global_state_shape[1] + self._env.num_agents)
+
+        return specs.Array(new_shape, jnp.int32, "global_state")
