@@ -13,29 +13,29 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from typing import Optional, Tuple
 
-import jax
 import chex
+import jax
 import jax.numpy as jnp
 from jumanji import specs
 from jumanji.types import TimeStep
-from collections import namedtuple
 
 from mava.types import State
 from mava.wrappers.agent_id_wrapper import AgentIDWrapper
 from mava.wrappers.base import MavaWrapper
+
+GLOBAL_STATE = "global_state"
 
 
 class GlobalStateWrapper(MavaWrapper, ABC):
     """Multi-agent wrapper for the Robotic Warehouse environment.
 
     The wrapper includes a global environment state to be used by the centralised critic.
-    Note here that since robotic warehouse does not have a global state, we create one
-    by concatenating the observations of all agents.
-    """
 
-    GLOBAL_STATE = "global_state"
+    Places the global state in `timestep.observation.global_state`.
+    """
 
     # just for type checking
     def __init__(self, env: MavaWrapper):
@@ -43,9 +43,34 @@ class GlobalStateWrapper(MavaWrapper, ABC):
         self._env: MavaWrapper
         obs = self._env.observation_spec().generate_value()
         # Creating types at runtime...yuck!
-        # This type is has the same fields as the observation, as well as a `global_state`.
+        # This type has the same fields as the observation, as well as a `global_state`.
         # (Don't see a better solution unless we add global_state to the timestep)
         self.ObsGlobalState = namedtuple("ObsGlobalState", obs._fields + ("global_state",))
+
+    def reset(self, key: chex.PRNGKey) -> Tuple[State, TimeStep]:
+        state, timestep = self._env.reset(key)
+
+        obs = timestep.observation
+        global_state = self._get_global_state(state, timestep)
+        timestep.observation = self.ObsGlobalState(**obs._asdict(), global_state=global_state)
+
+        return state, timestep
+
+    def step(self, state: State, action: chex.Array) -> Tuple[State, TimeStep]:
+        state, timestep = self._env.step(state, action)
+
+        obs = timestep.observation
+        global_state = self._get_global_state(state, timestep)
+        timestep.observation = self.ObsGlobalState(**obs._asdict(), global_state=global_state)
+
+        return state, timestep
+
+    def observation_spec(self) -> specs.Spec:
+        """Get the observation spec."""
+        spec = self._env.observation_spec()
+        return specs.Spec(
+            self.ObsGlobalState, spec._name, global_state=self.global_state_spec(), **spec._specs
+        )
 
     @abstractmethod
     def _get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
@@ -63,27 +88,7 @@ class DefaultGlobalStateWrapper(GlobalStateWrapper):
     of shape (num_agents, num_features) and live in `timestep.observation.agents_view`.
 
     By default the global state is the concatenation of the agents' observations.
-
-    Places the global state in `timestep.observation.extras[global_state]`.
     """
-
-    def reset(self, key: chex.PRNGKey) -> Tuple[State, TimeStep]:
-        state, timestep = self._env.reset(key)
-
-        obs = timestep.observation
-        global_state = self._get_global_state(state, timestep)
-        timestep.observation = self.ObsGlobalState(**obs._as_dict(), global_state=global_state)
-
-        return state, timestep
-
-    def step(self, state: State, action: chex.Array) -> Tuple[State, TimeStep]:
-        state, timestep = self._env.step(state, action)
-
-        obs = timestep.observation
-        global_state = self._get_global_state(state, timestep)
-        timestep.observation = self.ObsGlobalState(**obs._as_dict(), global_state=global_state)
-
-        return state, timestep
 
     def _get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
         """Get the global state of the environment."""
@@ -135,7 +140,7 @@ class GlobalStateWithAgentIDWrapper(GlobalStateWrapper):
         global_state = self._agent_id_wrapper._add_agent_ids(global_state, self._env.num_agents)
 
         obs = timestep.observation
-        timestep.observation = self.ObsGlobalState(**obs._as_dict(), global_state=global_state)
+        timestep.observation = self.ObsGlobalState(**obs._asdict(), global_state=global_state)
 
         # add agent IDs to observation.agents_view
         agents_view = timestep.observation.agents_view
@@ -153,7 +158,7 @@ class GlobalStateWithAgentIDWrapper(GlobalStateWrapper):
         global_state = self._agent_id_wrapper._add_agent_ids(global_state, self._env.num_agents)
 
         obs = timestep.observation
-        timestep.observation = self.ObsGlobalState(**obs._as_dict(), global_state=global_state)
+        timestep.observation = self.ObsGlobalState(**obs._asdict(), global_state=global_state)
 
         # add agent IDs to observation.agents_view
         agents_view = timestep.observation.agents_view
@@ -171,3 +176,24 @@ class GlobalStateWithAgentIDWrapper(GlobalStateWrapper):
         new_shape = (global_state_shape[0], global_state_shape[1] + self._env.num_agents)
 
         return specs.Array(new_shape, jnp.int32, "global_state")
+
+    def observation_spec(self) -> specs.Spec:
+        """Specification of the observation of the `RobotWarehouse` environment."""
+        # assumes dim 0 is the number of agents
+        # assumes dim 1 is the number of observation features
+
+        spec = self._env.observation_spec()
+        obs_features = spec.agents_view.shape[1]
+
+        # update spec to reflect addition of agent IDs to agents_view
+        agents_view = specs.Array(
+            (self._env.num_agents, obs_features + self._env.num_agents),
+            jnp.int32,
+            "agents_view",
+        )
+        spec = spec.replace(agents_view=agents_view)
+
+        # add in global state to the spec
+        return specs.Spec(
+            self.ObsGlobalState, spec._name, global_state=self.global_state_spec(), **spec._specs
+        )

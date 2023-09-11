@@ -25,7 +25,6 @@ from jumanji.environments.routing.robot_warehouse import (
 from jumanji.types import TimeStep
 
 from mava.wrappers.base import MavaWrapper
-from mava.wrappers.global_state_wrapper import GlobalStateWrapper
 
 
 class RwareMultiAgentWrapper(MavaWrapper):

@@ -85,11 +85,11 @@ class Critic(nn.Module):
 
     # question: should this take timestep.observation also?
     @nn.compact
-    def __call__(self, global_state: chex.Array) -> chex.Array:
+    def __call__(self, observation: Observation) -> chex.Array:
         """Forward pass."""
 
         critic_output = nn.Dense(128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(
-            global_state
+            observation.global_state
         )
         critic_output = nn.relu(critic_output)
         critic_output = nn.Dense(128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(
@@ -140,7 +140,7 @@ def get_learner_fn(
             # SELECT ACTION
             rng, policy_rng = jax.random.split(rng)
             actor_policy = actor_apply_fn(params.actor_params, last_timestep.observation)
-            value = critic_apply_fn(params.critic_params, last_timestep.extras["global_state"])
+            value = critic_apply_fn(params.critic_params, last_timestep.observation)
             action = actor_policy.sample(seed=policy_rng)
             log_prob = actor_policy.log_prob(action)
 
@@ -420,26 +420,14 @@ def learner_setup(
     # Initialise observation.
     obs = env.observation_spec().generate_value()
     # Select only obs for a single agent.
-    init_x_old = type(obs)(
-        agents_view=obs.agents_view[0],
-        action_mask=obs.action_mask[0],
-        step_count=obs.step_count[0],
-    )
-    init_x_old = jax.tree_util.tree_map(lambda x: x[None, ...], init_x_old)
     init_x = jax.tree_util.tree_map(lambda x: x[0][jnp.newaxis, ...], obs)
-
-    global_state = env.global_state_spec().generate_value()[0][jnp.newaxis, ...]
-    chex.assert_trees_all_equal(init_x, init_x_old)
-    print(init_x_old)
-    print("\n\n\n\n")
-    print(init_x)
 
     # Initialise actor params and optimiser state.
     actor_params = actor_network.init(rng_p, init_x)
     actor_opt_state = actor_optim.init(actor_params)
 
     # Initialise critic params and optimiser state.
-    critic_params = critic_network.init(rng_p, global_state)
+    critic_params = critic_network.init(rng_p, init_x)
     critic_opt_state = critic_optim.init(critic_params)
 
     # Vmap network apply function over number of agents.
@@ -516,11 +504,11 @@ def run_experiment(_run: run.Run, _config: Dict, _log: SacredLogger) -> None:
 
     # Create eval envs
     eval_env = jumanji.make(config["env_name"], generator=generator)
-    env = RwareMultiAgentWrapper(env)
+    eval_env = RwareMultiAgentWrapper(eval_env)
     if config["add_agent_id"]:
-        env = GlobalStateWithAgentIDWrapper(env)
+        eval_env = GlobalStateWithAgentIDWrapper(eval_env)
     else:
-        env = DefaultGlobalStateWrapper(env)
+        eval_env = DefaultGlobalStateWrapper(eval_env)
 
     # PRNG keys.
     rng, rng_e, rng_p = jax.random.split(jax.random.PRNGKey(config["seed"]), num=3)
