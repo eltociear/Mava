@@ -28,7 +28,6 @@ import optax
 from colorama import Fore, Style
 from flax.core.frozen_dict import FrozenDict
 from flax.linen.initializers import constant, orthogonal
-from jumanji.env import Environment
 from jumanji.environments.routing.robot_warehouse.generator import RandomGenerator
 from jumanji.types import Observation
 from jumanji.wrappers import AutoResetWrapper
@@ -42,9 +41,12 @@ from mava.types import ExperimentOutput, LearnerState, OptStates, Params, PPOTra
 from mava.utils.jax import merge_leading_dims
 from mava.utils.logger_tools import config_copy, get_experiment_path, get_logger
 from mava.utils.timing_utils import TimeIt
-from mava.wrappers.agent_id_wrapper import AgentIDWrapper
-from mava.wrappers.global_state_wrapper import GlobalStateWrapper
-from mava.wrappers.jumanji import RwareGlobalStateWrapper, RwareMultiAgentWrapper
+from mava.wrappers.global_state_wrapper import (
+    DefaultGlobalStateWrapper,
+    GlobalStateWithAgentIDWrapper,
+    GlobalStateWrapper,
+)
+from mava.wrappers.jumanji import RwareMultiAgentWrapper
 from mava.wrappers.log_wrapper import LogWrapper
 
 
@@ -81,12 +83,13 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic Network."""
 
+    # question: should this take timestep.observation also?
     @nn.compact
-    def __call__(self, observation: Observation) -> chex.Array:
+    def __call__(self, global_state: chex.Array) -> chex.Array:
         """Forward pass."""
 
         critic_output = nn.Dense(128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(
-            observation.global_state
+            global_state
         )
         critic_output = nn.relu(critic_output)
         critic_output = nn.Dense(128, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(
@@ -137,7 +140,7 @@ def get_learner_fn(
             # SELECT ACTION
             rng, policy_rng = jax.random.split(rng)
             actor_policy = actor_apply_fn(params.actor_params, last_timestep.observation)
-            value = critic_apply_fn(params.critic_params, last_timestep.observation)
+            value = critic_apply_fn(params.critic_params, last_timestep.extras["global_state"])
             action = actor_policy.sample(seed=policy_rng)
             log_prob = actor_policy.log_prob(action)
 
@@ -388,7 +391,7 @@ def get_learner_fn(
 
 
 def learner_setup(
-    env: Environment, rngs: chex.Array, config: Dict
+    env: GlobalStateWrapper, rngs: chex.Array, config: Dict
 ) -> Tuple[Callable, Actor, LearnerState]:
     """Initialise learner_fn, network, optimiser, environment and states."""
     # Get available TPU cores.
@@ -417,20 +420,26 @@ def learner_setup(
     # Initialise observation.
     obs = env.observation_spec().generate_value()
     # Select only obs for a single agent.
-    init_x = ObservationGlobalState(
+    init_x_old = type(obs)(
         agents_view=obs.agents_view[0],
         action_mask=obs.action_mask[0],
-        global_state=obs.global_state[0],
         step_count=obs.step_count[0],
     )
-    init_x = jax.tree_util.tree_map(lambda x: x[None, ...], init_x)
+    init_x_old = jax.tree_util.tree_map(lambda x: x[None, ...], init_x_old)
+    init_x = jax.tree_util.tree_map(lambda x: x[0][jnp.newaxis, ...], obs)
+
+    global_state = env.global_state_spec().generate_value()[0][jnp.newaxis, ...]
+    chex.assert_trees_all_equal(init_x, init_x_old)
+    print(init_x_old)
+    print("\n\n\n\n")
+    print(init_x)
 
     # Initialise actor params and optimiser state.
     actor_params = actor_network.init(rng_p, init_x)
     actor_opt_state = actor_optim.init(actor_params)
 
     # Initialise critic params and optimiser state.
-    critic_params = critic_network.init(rng_p, init_x)
+    critic_params = critic_network.init(rng_p, global_state)
     critic_opt_state = critic_optim.init(critic_params)
 
     # Vmap network apply function over number of agents.
@@ -497,17 +506,21 @@ def run_experiment(_run: run.Run, _config: Dict, _log: SacredLogger) -> None:
     generator = RandomGenerator(**config["rware_scenario"]["task_config"])
     env = jumanji.make(config["env_name"], generator=generator)
     env = RwareMultiAgentWrapper(env)
-    env = RwareGlobalStateWrapper(env)
     # Add agent id to observation.
     if config["add_agent_id"]:
-        env = AgentIDWrapper(env=env, has_global_state=True)
+        env = GlobalStateWithAgentIDWrapper(env)
+    else:
+        env = DefaultGlobalStateWrapper(env)
     env = AutoResetWrapper(env)
     env = LogWrapper(env)
+
+    # Create eval envs
     eval_env = jumanji.make(config["env_name"], generator=generator)
     env = RwareMultiAgentWrapper(env)
-    env = RwareGlobalStateWrapper(env)
     if config["add_agent_id"]:
-        eval_env = AgentIDWrapper(env=eval_env, has_global_state=True)
+        env = GlobalStateWithAgentIDWrapper(env)
+    else:
+        env = DefaultGlobalStateWrapper(env)
 
     # PRNG keys.
     rng, rng_e, rng_p = jax.random.split(jax.random.PRNGKey(config["seed"]), num=3)

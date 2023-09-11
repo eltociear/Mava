@@ -74,14 +74,3 @@ class RwareMultiAgentWrapper(MavaWrapper):
             "step_count",
         )
         return self._env.observation_spec().replace(step_count=step_count)
-
-
-class RwareGlobalStateWrapper(GlobalStateWrapper):
-    def __init__(self, env: RwareMultiAgentWrapper):
-        super().__init__(env)
-        self._env: RwareMultiAgentWrapper
-
-    def _get_global_state(self, state: State, timestep: TimeStep) -> chex.Array:
-        global_state = jnp.concatenate(timestep.observation.agents_view, axis=0)
-        global_state = jnp.tile(global_state, (self._env.num_agents, 1))
-        return global_state

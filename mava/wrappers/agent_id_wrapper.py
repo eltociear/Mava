@@ -20,7 +20,7 @@ from jumanji import specs
 from jumanji.types import Observation, TimeStep
 
 from mava.types import State
-from mava.wrappers.jumanji import MavaWrapper
+from mava.wrappers.base import MavaWrapper
 
 
 class AgentIDWrapper(MavaWrapper):
