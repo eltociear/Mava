@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
+import time
 from logging import Logger as SacredLogger
 from typing import Any, Callable, Dict, Sequence, Tuple
 
@@ -25,6 +25,7 @@ import jax.numpy as jnp
 import jumanji
 import numpy as np
 import optax
+import rlax
 from colorama import Fore, Style
 from flax.core.frozen_dict import FrozenDict
 from flax.linen.initializers import constant, orthogonal
@@ -109,6 +110,15 @@ def get_learner_fn(
     actor_apply_fn, critic_apply_fn = apply_fns
     actor_update_fn, critic_update_fn = update_fns
 
+    # `vmap` the gae function to work over the batch that mava has: (n_rollouts, n_agents, n_envs)
+    calc_gae = jax.vmap(
+        jax.vmap(
+            rlax.truncated_generalized_advantage_estimation, in_axes=(1, 1, None, 1), out_axes=1
+        ),
+        in_axes=(1, 1, None, 1),
+        out_axes=1,
+    )
+
     def _update_step(learner_state: LearnerState, _: Any) -> Tuple[LearnerState, Tuple]:
         """A single update of the network.
 
@@ -165,6 +175,15 @@ def get_learner_fn(
         # CALCULATE ADVANTAGE
         params, opt_states, rng, env_state, last_timestep = learner_state
         last_val = critic_apply_fn(params.critic_params, last_timestep.observation)
+        vals = jnp.concatenate([traj_batch.value, last_val[jnp.newaxis, ...]], axis=0)
+
+        start = time.time()
+        advantages = calc_gae(
+            traj_batch.reward, (1 - traj_batch.done) * config["gamma"], config["gae_lambda"], vals
+        )
+
+        targets = advantages + traj_batch.value
+        end1 = time.time() - start
 
         def _calculate_gae(
             traj_batch: PPOTransition, last_val: chex.Array
@@ -192,7 +211,16 @@ def get_learner_fn(
             )
             return advantages, advantages + traj_batch.value
 
-        advantages, targets = _calculate_gae(traj_batch, last_val)
+        start = time.time()
+        ad, tg = _calculate_gae(traj_batch, last_val)
+        end2 = time.time() - start
+        jax.debug.print(
+            "ADVANTAGE {l}", l=jax.tree_util.tree_map(lambda x, y: x == y, ad, advantages).all()
+        )
+        jax.debug.print(
+            "TARGET {k}", k=jax.tree_util.tree_map(lambda x, y: x == y, tg, targets).all()
+        )
+        jax.debug.print("TIME new-old {k}", k=end1 - end2)
 
         def _update_epoch(update_state: Tuple, _: Any) -> Tuple:
             """Update the network for a single epoch."""
@@ -218,6 +246,14 @@ def get_learner_fn(
                     # CALCULATE ACTOR LOSS
                     ratio = jnp.exp(log_prob - traj_batch.log_prob)
                     gae = (gae - gae.mean()) / (gae.std() + 1e-8)
+                    # Takes the minimum of the clipped and unclipped loss.
+                    # Can ravel the batch here since the loss is meaned anyways.
+                    start_time = time.time()
+                    loss_actor = rlax.clipped_surrogate_pg_loss(
+                        jnp.ravel(ratio), jnp.ravel(gae), config["clip_eps"]
+                    )
+                    end3 = time.time() - start_time
+                    start_time = time.time()
                     loss_actor1 = ratio * gae
                     loss_actor2 = (
                         jnp.clip(
@@ -227,8 +263,17 @@ def get_learner_fn(
                         )
                         * gae
                     )
-                    loss_actor = -jnp.minimum(loss_actor1, loss_actor2)
-                    loss_actor = loss_actor.mean()
+                    loss_actor_test = -jnp.minimum(loss_actor1, loss_actor2)
+                    loss_actor_test = loss_actor.mean()
+                    end4 = time.time() - start_time
+                    jax.debug.print(
+                        "LOSS {k}",
+                        k=jax.tree_util.tree_map(
+                            lambda x, y: x == y, loss_actor, loss_actor_test
+                        ).all(),
+                    )
+                    jax.debug.print("TIME LOSS new-old {k}", k=end3 - end4)
+
                     entropy = actor_policy.entropy().mean()
 
                     total_loss_actor = loss_actor - config["ent_coef"] * entropy
