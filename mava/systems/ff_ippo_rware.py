@@ -499,9 +499,7 @@ def run_experiment(_run: run.Run, _config: Dict, _log: SacredLogger) -> None:
     # Create envs
     # generator = RandomGenerator(**config["rware_scenario"]["task_config"])
     # env = jumanji.make(config["env_name"], generator=generator)
-    gen = RandomGenerator(
-        grid_size=10, num_agents=3, num_food=3, max_agent_level=3, max_food_level=9
-    )
+    gen = RandomGenerator(grid_size=10, num_agents=3, num_food=3, max_agent_level=3)
     observer = VectorObserver(fov=11, grid_size=10)
     env = LevelBasedForaging(generator=gen, observer=observer)
     env = RwareMultiAgentWrapper(env)

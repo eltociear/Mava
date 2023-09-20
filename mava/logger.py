@@ -30,7 +30,7 @@ from mava.utils.logger_tools import Logger, get_experiment_path, should_log
 def get_logger_tools(logger: Logger, config: Dict) -> Callable:  # noqa: CCR001
     """Get the logger function."""
 
-    def log(
+    def log(  # noqa: CCR001
         metrics: ExperimentOutput,
         t_env: int = 0,
         trainer_metric: bool = False,
@@ -62,7 +62,6 @@ def get_logger_tools(logger: Logger, config: Dict) -> Callable:  # noqa: CCR001
         episodes_return = jnp.ravel(episodes_info["episode_return"])
         episodes_length = jnp.ravel(episodes_info["episode_length"])
         if trainer_metric:
-            print(episodes_info["num_eaten"].shape)
             num_eaten = jnp.ravel(episodes_info["num_eaten"])
             percent_eaten = jnp.ravel(episodes_info["percent_eaten"])
         else:
