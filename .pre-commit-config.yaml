@@ -33,12 +33,10 @@ repos:
         name: "Trailing whitespace fixer"
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 3.9.2
+    rev: 6.1.0
     hooks:
       - id: flake8
         name: "Linter"
-        args:
-          - --config=setup.cfg
         additional_dependencies:
           - pep8-naming
           - flake8-builtins
@@ -46,6 +44,7 @@ repos:
           - flake8-bugbear
           - flake8-pytest-style
           - flake8-cognitive-complexity
+          - flake8-pyproject
           - importlib-metadata<5.0
 
   - repo: local
@@ -72,6 +71,6 @@ repos:
         name: "License inserter"
         files: .*py$
         args:
-          - --license-filepath=license_header.txt
+          - --license-filepath=docs/license_header.txt
           - --comment-style=#
         exclude: .npy$  # Do not add license to .npy files (the standard binary file format in NumPy)
