@@ -47,5 +47,5 @@ system_name: ~  # this is manually set inside each file depending on which syste
 # Neptune logging
 use_neptune: True
 neptune_project: InstaDeep/mava
-neptune_tag: [lbf,trunc]
+neptune_tag: [lbf,trunc,test]
 name: None # Unique ID from logging.

@@ -151,9 +151,13 @@ def get_learner_fn(
             done = jnp.asarray(1.0 - timestep.discount).astype(bool)
             reward = timestep.reward
 
+            n_eaten = env_state.env_state.foods.eaten.sum()
+            percent_eaten = n_eaten / len(env_state.env_state.foods.eaten)
             info = {
                 "episode_return": env_state.episode_return_info,
                 "episode_length": env_state.episode_length_info,
+                "num_eaten": n_eaten,
+                "percent_eaten": percent_eaten,
             }
 
             transition = PPOTransition(
@@ -494,7 +498,7 @@ def run_experiment(_run: run.Run, _config: Dict, _log: SacredLogger) -> None:
     # generator = RandomGenerator(**config["rware_scenario"]["task_config"])
     # env = jumanji.make(config["env_name"], generator=generator)
     gen = RandomGenerator(
-        grid_size=10, num_agents=3, num_food=3, max_agent_level=2, max_food_level=6
+        grid_size=10, num_agents=3, num_food=3, max_agent_level=3, max_food_level=9
     )
     observer = VectorObserver(fov=11, grid_size=10)
     env = LevelBasedForaging(generator=gen, observer=observer)

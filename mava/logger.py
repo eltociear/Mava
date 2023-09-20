@@ -61,24 +61,29 @@ def get_logger_tools(logger: Logger, config: Dict) -> Callable:  # noqa: CCR001
         # Flatten metrics info.
         episodes_return = jnp.ravel(episodes_info["episode_return"])
         episodes_length = jnp.ravel(episodes_info["episode_length"])
+        if trainer_metric:
+            print(episodes_info["num_eaten"].shape)
+            num_eaten = jnp.ravel(episodes_info["num_eaten"])
+            percent_eaten = jnp.ravel(episodes_info["percent_eaten"])
+        else:
+            num_eaten = np.array([0])
+            percent_eaten = np.array([0])
 
         # Log metrics.
         if should_log(config):
             logger.log_stat(
-                prefix.lower() + "mean_episode_returns",
-                float(np.mean(episodes_return)),
-                t_env,
+                prefix.lower() + "mean_episode_returns", float(np.mean(episodes_return)), t_env
             )
             logger.log_stat(
-                prefix.lower() + "mean_episode_length",
-                float(np.mean(episodes_length)),
-                t_env,
+                prefix.lower() + "mean_episode_length", float(np.mean(episodes_length)), t_env
             )
             if trainer_metric:
                 logger.log_stat("total_loss", float(np.mean(total_loss)), t_env)
                 logger.log_stat("value_loss", float(np.mean(value_loss)), t_env)
                 logger.log_stat("loss_actor", float(np.mean(loss_actor)), t_env)
                 logger.log_stat("entropy", float(np.mean(entropy)), t_env)
+                logger.log_stat("mean_num_eaten", float(np.mean(num_eaten)), t_env)
+                logger.log_stat("mean_percent_eaten", float(np.mean(percent_eaten)), t_env)
 
         log_string = (
             f"Timesteps {t_env:07d} | "
@@ -87,7 +92,9 @@ def get_logger_tools(logger: Logger, config: Dict) -> Callable:  # noqa: CCR001
             f"Max Episode Return {float(np.max(episodes_return)):.3f} | "
             f"Mean Episode Length {float(np.mean(episodes_length)):.3f} | "
             f"Std Episode Length {float(np.std(episodes_length)):.3f} | "
-            f"Max Episode Length {float(np.max(episodes_length)):.3f}"
+            f"Max Episode Length {float(np.max(episodes_length)):.3f} | "
+            f"Num Eaten {float(np.mean(num_eaten)):.3f} | "
+            f"Percent Eaten {float(np.mean(percent_eaten)):.3f}"
         )
 
         if absolute_metric:
