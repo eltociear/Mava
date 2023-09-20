@@ -151,13 +151,9 @@ def get_learner_fn(
             done = jnp.asarray(1.0 - timestep.discount).astype(bool)
             reward = timestep.reward
 
-            n_eaten = env_state.env_state.foods.eaten.sum()
-            percent_eaten = n_eaten / len(env_state.env_state.foods.eaten)
             info = {
                 "episode_return": env_state.episode_return_info,
                 "episode_length": env_state.episode_length_info,
-                "num_eaten": n_eaten,
-                "percent_eaten": percent_eaten,
             }
 
             transition = PPOTransition(
@@ -169,6 +165,12 @@ def get_learner_fn(
         # STEP ENVIRONMENT FOR ROLLOUT LENGTH
         learner_state, traj_batch = jax.lax.scan(
             _env_step, learner_state, None, config["rollout_length"]
+        )
+        n_eaten = learner_state.env_state.env_state.foods.eaten.sum()
+        percent_eaten = n_eaten / len(learner_state.env_state.env_state.foods.eaten)
+        traj_batch.info["num_eaten"] = jnp.zeros_like(traj_batch.info["episode_return"]) + n_eaten
+        traj_batch.info["percent_eaten"] = (
+            jnp.zeros_like(traj_batch.info["episode_return"]) + percent_eaten
         )
 
         # CALCULATE ADVANTAGE
