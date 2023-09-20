@@ -167,7 +167,7 @@ def get_learner_fn(
             _env_step, learner_state, None, config["rollout_length"]
         )
         n_eaten = learner_state.env_state.env_state.foods.eaten.sum()
-        percent_eaten = n_eaten / len(learner_state.env_state.env_state.foods.eaten)
+        percent_eaten = n_eaten / learner_state.env_state.env_state.foods.eaten.size
         traj_batch.info["num_eaten"] = jnp.zeros_like(traj_batch.info["episode_return"]) + n_eaten
         traj_batch.info["percent_eaten"] = (
             jnp.zeros_like(traj_batch.info["episode_return"]) + percent_eaten
