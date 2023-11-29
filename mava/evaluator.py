@@ -310,6 +310,7 @@ def evaluator_setup(
 
     return evaluator, absolute_metric_evaluator, (trained_params, eval_rngs)
 
+
 def sac_evaluator_setup(
     eval_env: Environment,
     rng_e: chex.PRNGKey,
@@ -336,8 +337,8 @@ def sac_evaluator_setup(
         10,
     )
 
-    #TODO: bring back the pmapping
-    #evaluator = jax.pmap(evaluator, axis_name="device")
-    #absolute_metric_evaluator = jax.pmap(absolute_metric_evaluator, axis_name="device")
+    # TODO: bring back the pmapping
+    evaluator = jax.pmap(evaluator, axis_name="device")
+    absolute_metric_evaluator = jax.pmap(absolute_metric_evaluator, axis_name="device")
 
     return evaluator, absolute_metric_evaluator
