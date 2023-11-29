@@ -29,7 +29,7 @@ from colorama import Fore, Style
 from flax.core.frozen_dict import FrozenDict
 from flax.linen.initializers import constant, orthogonal
 from jumanji.env import Environment
-from jumanji.environments.routing.robot_warehouse.generator import RandomGenerator
+from jumanji.environments.routing.lbf.generator import RandomGenerator
 from jumanji.wrappers import AutoResetWrapper
 from omegaconf import DictConfig, OmegaConf
 from optax._src.base import OptState
@@ -503,16 +503,16 @@ def run_experiment(_config: Dict) -> None:
     log = logger_setup(config)
 
     # Create envs
-    generator = RandomGenerator(**config["env"]["rware_scenario"]["task_config"])
+    generator = RandomGenerator(**config["env"]["lbf_scenario"]["task_config"])
     env = jumanji.make(config["env"]["env_name"], generator=generator)
-    env = MultiAgentWrapper(env)
+    env = MultiAgentWrapper(env=env, aggregate_rewards=config["env"]["aggregate_rewards"])
     # Add agent id to observation.
     if config["system"]["add_agent_id"]:
         env = AgentIDWrapper(env)
     env = AutoResetWrapper(env)
     env = LogWrapper(env)
     eval_env = jumanji.make(config["env"]["env_name"], generator=generator)
-    eval_env = MultiAgentWrapper(eval_env)
+    eval_env = MultiAgentWrapper(eval_env, aggregate_rewards=config["env"]["aggregate_rewards"])
     if config["system"]["add_agent_id"]:
         eval_env = AgentIDWrapper(eval_env)
 
