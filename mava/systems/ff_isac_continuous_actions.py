@@ -578,7 +578,8 @@ def main(_config) -> None:
 
     config["arch"]["devices"] = len(jax.devices())
     steps_per_rollout = (
-        (config["system"]["num_updates"] // config["arch"]["num_evaluation"])
+        config["arch"]["devices"]
+        * (config["system"]["num_updates"] // config["arch"]["num_evaluation"])
         * config["system"]["rollout_length"]
         * config["arch"]["num_envs"]
     )
