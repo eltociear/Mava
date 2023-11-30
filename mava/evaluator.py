@@ -15,6 +15,7 @@
 from typing import Any, Dict, Optional, Tuple
 
 import chex
+import distrax
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -31,8 +32,34 @@ from mava.types import (
 )
 
 
+def sample_action(mean, log_std, key):
+    std = jnp.exp(log_std)
+    normal = distrax.Normal(mean, std)
+    x_t = normal.sample(seed=key)
+    y_t = jnp.tanh(x_t)
+    # action = 2 * y_t  # actions [-2,2]
+    # action = (y_t * 0.5) + 0.5  # enforce actions between [0, 1]
+
+    action = y_t
+    log_prob = normal.log_prob(x_t)
+    log_prob -= jnp.log(0.5 * (1 - y_t**2) + 1e-6)
+    log_prob = jnp.sum(log_prob, axis=-1, keepdims=True)
+
+    return action, log_prob
+
+
+def select_actions_sac(apply_fn, params: nn.FrozenDict, obs, key):
+    mean, log_std = apply_fn(params, obs)
+    actions, _ = sample_action(mean, log_std, key)
+    return actions
+
+
 def get_ff_evaluator_fn(
-    env: Environment, apply_fn: ActorApply, config: dict, eval_multiplier: int = 1
+    env: Environment,
+    apply_fn: ActorApply,
+    config: dict,
+    eval_multiplier: int = 1,
+    sac: bool = False,
 ) -> EvalFn:
     """Get the evaluator function for feedforward networks.
 
@@ -58,12 +85,14 @@ def get_ff_evaluator_fn(
 
             # Select action.
             rng, _rng = jax.random.split(rng)
-            pi = apply_fn(params, last_timestep.observation)
-
-            if config["arch"]["evaluation_greedy"]:
-                action = pi.mode()
+            if sac:
+                action = select_actions_sac(apply_fn, params, last_timestep.observation, _rng)
             else:
-                action = pi.sample(seed=_rng)
+                pi = apply_fn(params, last_timestep.observation)
+                if config["arch"]["evaluation_greedy"]:
+                    action = pi.mode()
+                else:
+                    action = pi.sample(seed=_rng)
 
             # Step environment.
             env_state, timestep = env.step(env_state, action)
@@ -325,16 +354,9 @@ def sac_evaluator_setup(
         network.apply,
         in_axes=(None, 0),
     )
-    evaluator = get_ff_evaluator_fn(
-        eval_env,
-        vmapped_eval_network_apply_fn,
-        config,
-    )
+    evaluator = get_ff_evaluator_fn(eval_env, vmapped_eval_network_apply_fn, config, 1, True)
     absolute_metric_evaluator = get_ff_evaluator_fn(
-        eval_env,
-        vmapped_eval_network_apply_fn,
-        config,
-        10,
+        eval_env, vmapped_eval_network_apply_fn, config, 10, True
     )
 
     # TODO: bring back the pmapping
