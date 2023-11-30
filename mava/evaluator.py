@@ -42,7 +42,7 @@ def sample_action(mean, log_std, key):
 
     action = y_t
     log_prob = normal.log_prob(x_t)
-    log_prob -= jnp.log(0.5 * (1 - y_t**2) + 1e-6)
+    log_prob -= jnp.log((1 - y_t**2) + 1e-6)
     log_prob = jnp.sum(log_prob, axis=-1, keepdims=True)
 
     return action, log_prob
