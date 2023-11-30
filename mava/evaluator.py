@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import chex
 import distrax
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+from chex import Array, PRNGKey
 from flax.core.frozen_dict import FrozenDict
 from jumanji.env import Environment
 
@@ -32,7 +33,7 @@ from mava.types import (
 )
 
 
-def sample_action(mean, log_std, key):
+def sample_action(mean: Array, log_std: Array, key: PRNGKey) -> Tuple[Array, Array]:
     std = jnp.exp(log_std)
     normal = distrax.Normal(mean, std)
     x_t = normal.sample(seed=key)
@@ -48,7 +49,12 @@ def sample_action(mean, log_std, key):
     return action, log_prob
 
 
-def select_actions_sac(apply_fn, params: nn.FrozenDict, obs, key):
+def select_actions_sac(
+    apply_fn: Callable[[nn.FrozenDict, Array], Tuple[Array, Array]],
+    params: nn.FrozenDict,
+    obs: Array,
+    key: PRNGKey,
+) -> Array:
     mean, log_std = apply_fn(params, obs)
     actions, _ = sample_action(mean, log_std, key)
     return actions
@@ -341,15 +347,10 @@ def evaluator_setup(
 
 
 def sac_evaluator_setup(
-    eval_env: Environment,
-    rng_e: chex.PRNGKey,
-    network: Any,
-    params: FrozenDict,
-    config: Dict,
-) -> Tuple[EvalFn, EvalFn, Tuple[FrozenDict, chex.Array]]:
+    eval_env: Environment, rng_e: chex.PRNGKey, network: Any, params: FrozenDict, config: Dict
+) -> Tuple[EvalFn, EvalFn]:
     """Initialise evaluator_fn."""
     # Get available TPU cores.
-    n_devices = len(jax.devices())
     vmapped_eval_network_apply_fn = jax.vmap(
         network.apply,
         in_axes=(None, 0),

@@ -37,9 +37,9 @@ from rich.pretty import pprint
 
 from mava.evaluator import sac_evaluator_setup
 from mava.logger import logger_setup
-from mava.types import ActorApply, CriticApply, EvalState, LearnerState, Observation
+from mava.types import LearnerState, Observation
 from mava.wrappers.jaxmarl_wrapper import JaxMarlWrapper
-from mava.wrappers.jumanji import AgentIDWrapper, LogWrapper, MultiAgentWrapper
+from mava.wrappers.jumanji import LogWrapper
 
 
 def sample_action(mean: Array, log_std: Array, key: PRNGKey) -> Tuple[Array, Array]:
@@ -101,7 +101,6 @@ State = Tuple[LearnerState, BufferState[Transition]]
 
 
 class Actor(nn.Module):
-
     action_dim: int
     # TODO: check this
     log_std_max: int = 2
@@ -143,7 +142,7 @@ def get_learner_fn(
     opt: optax.GradientTransformation,
     buffer: TrajectoryBuffer,
     config: Dict,
-) -> Callable[[LearnerState, BufferState[Transition]], State]:
+) -> Callable[[LearnerState, BufferState[Transition]], Tuple[State, Tuple[Dict, Dict]]]:
     n_rollouts = config["system"]["rollout_length"]
     target_entropy = -env.action_spec().shape[1]
 
@@ -283,7 +282,7 @@ def get_learner_fn(
         )
         return learner_state, losses
 
-    def act(carry: State, _: Any) -> State:
+    def act(carry: State, _: Any) -> Tuple[State, Dict[str, Array]]:
         learner_state, buffer_state = carry
         actor_params = learner_state.params.actor
 
@@ -316,18 +315,18 @@ def get_learner_fn(
 
         return (learner_state, buffer_state), info
 
-    def _act_and_log(carry: State, _: Any) -> State:
+    def _act_and_log(carry: State, _: Any) -> Tuple[State, Tuple[Dict, Dict]]:
         learner_state, buffer_state = carry
 
         key, sample_key = jax.random.split(learner_state.key)
         learner_state = learner_state._replace(key=key)
 
-        (learner_state, buffer_state), metrics = jax.lax.scan(
+        (learner_state, buffer_state), rollout_metrics = jax.lax.scan(
             act, (learner_state, buffer_state), None, n_rollouts
         )
 
         # todo: clean this up a bit :)
-        def learn(learner_state):
+        def learn(learner_state: LearnerState) -> Tuple[LearnerState, Dict[str, Array]]:
             batches = buffer.sample(buffer_state, sample_key)
             minibatch_size = int(
                 config["system"]["batch_size"] / config["system"]["num_minibatches"]
@@ -339,34 +338,35 @@ def get_learner_fn(
             learner_state, loss_info = jax.lax.scan(update, learner_state, batches)
             return learner_state, loss_info
 
-        def noop(learner_state):
+        def noop(learner_state: LearnerState) -> Tuple[LearnerState, Dict[str, Array]]:
             zero = jnp.zeros(config["system"]["num_minibatches"])
             losses = {"actor_loss": zero, "critic_loss": zero, "alpha_loss": zero}
-            metrics = {"alpha": zero, "mean_q": zero}
-            return learner_state, losses | metrics
+            values = {"alpha": zero, "mean_q": zero}
+            return learner_state, losses | values
 
-        learner_state, loss_info = jax.lax.cond(
+        learner_state, losses = jax.lax.cond(
             buffer.can_sample(buffer_state), learn, noop, learner_state
         )
 
-        return (learner_state, buffer_state), (metrics, loss_info)
+        return (learner_state, buffer_state), (rollout_metrics, losses)
 
-    def act_and_learn(learner_state: LearnerState, buffer_state: BufferState[Transition]) -> State:
+    def act_and_learn(
+        learner_state: LearnerState, buffer_state: BufferState[Transition]
+    ) -> Tuple[State, Tuple[Dict, Dict]]:
         # I'm not sure the None in the vmap works here.
-        # We replicate the buffer state, but each proc also edits the state, so how are they combined?
+        # We replicate the buffer state, but each proc also edits the state,
+        # so how are they combined?
+        n_steps = config["system"]["num_updates"] // config["arch"]["num_evaluation"]
         batched_update_step = jax.vmap(_act_and_log, in_axes=(0, None), axis_name="batch")
-        (learner_state, buffer_state), (metrics, loss_info) = jax.lax.scan(
-            batched_update_step,
-            (learner_state, buffer_state),
-            None,
-            (config["system"]["num_updates"] // config["arch"]["num_evaluation"]),
+        (learner_state, buffer_state), (rollout_metrics, losses) = jax.lax.scan(
+            batched_update_step, (learner_state, buffer_state), None, n_steps
         )
-        return (learner_state, buffer_state), (metrics, loss_info)
+        return (learner_state, buffer_state), (rollout_metrics, losses)
 
     return act_and_learn
 
 
-def main(_config) -> None:
+def main(_config: Dict) -> None:
     config = copy.deepcopy(_config)
     log = logger_setup(config, system="sac")
 

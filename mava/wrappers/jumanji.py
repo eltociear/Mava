@@ -93,7 +93,7 @@ class MultiAgentWrapper(Wrapper):
         )  # No error!
 
     def aggregate_rewards(
-        self, timestep: TimeStep, observation: Observation
+        self, timestep: TimeStep[Observation], observation: Observation
     ) -> TimeStep[Observation]:
         """Aggregate rewards across agents using the specified function."""
         reward = jnp.repeat(self.aggregate_function(timestep.reward), self._num_agents)
