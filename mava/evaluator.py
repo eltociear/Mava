@@ -94,11 +94,11 @@ def get_ff_evaluator_fn(
             if sac:
                 action = select_actions_sac(apply_fn, params, last_timestep.observation, _rng)
             else:
-                pi = apply_fn(params, last_timestep.observation)
-                if config["arch"]["evaluation_greedy"]:
-                    action = pi.mode()
-                else:
-                    action = pi.sample(seed=_rng)
+                # TODO: make option for discrete action space
+                actor_mean, actor_log_std = apply_fn(params, last_timestep.observation)
+                policy = distrax.MultivariateNormalDiag(actor_mean, jnp.exp(actor_log_std))
+                raw_action, _ = policy.sample_and_log_prob(seed=_rng)
+                action = jnp.tanh(raw_action)
 
             # Step environment.
             env_state, timestep = env.step(env_state, action)
