@@ -18,6 +18,7 @@ import jax
 import jax.numpy as jnp
 from chex import Array, ArrayTree, PRNGKey
 from jaxmarl.environments.multi_agent_env import MultiAgentEnv
+from jaxmarl import make
 from jumanji import specs
 from jumanji.types import StepType, TimeStep, restart
 from jumanji.wrappers import Wrapper

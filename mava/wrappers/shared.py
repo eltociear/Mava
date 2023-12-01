@@ -172,9 +172,10 @@ class GlobalStateWrapper(Wrapper):
         """Specification of the observation of the `RobotWarehouse` environment."""
 
         obs_spec = self._env.observation_spec()
+
         global_state = specs.Array(
-            (self._env.num_agents, self._env.num_agents * self._env.num_obs_features),
-            jnp.int32,
+            (self._env.num_agents, self._env.num_agents * obs_spec.agents_view.shape[1]),
+            jnp.float32,  # todo float vs int for discrete vs continuous
             "global_state",
         )
 
