@@ -39,7 +39,7 @@ from mava.evaluator import sac_evaluator_setup
 from mava.logger import logger_setup
 from mava.types import LearnerState, Observation
 from mava.wrappers.jaxmarl_wrapper import JaxMarlWrapper
-from mava.wrappers.jumanji import LogWrapper
+from mava.wrappers.shared import LogWrapper
 
 
 def sample_action(mean: Array, log_std: Array, key: PRNGKey) -> Tuple[Array, Array]:
