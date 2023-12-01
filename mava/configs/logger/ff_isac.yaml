@@ -6,4 +6,4 @@ system_name: ff_isac
 # --- Neptune options ---
 kwargs:
   neptune_project: Instadeep/Mava
-  neptune_tag: [ma-isac, ma-brax]
+  neptune_tag: [ma-isac, ma-brax, sweep]

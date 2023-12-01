@@ -1,6 +1,6 @@
 # --- Defaults FF-ISAC ---
 
-num_updates: 5000 # Number of updates
+num_updates: 10000 # Number of updates
 seed: 1
 
 # --- Agent observations ---

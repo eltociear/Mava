@@ -1,7 +1,7 @@
 # --- Defaults FF-MAPPO ---
 
-num_updates: 1000 # Number of updates
-seed: 42
+num_updates: 100000 # Number of updates
+seed: 30
 
 # --- Agent observations ---
 add_agent_id: True
@@ -10,7 +10,7 @@ add_agent_id: True
 actor_lr: 2.5e-4 # Learning rate for actor network
 critic_lr: 2.5e-4 # Learning rate for critic network
 update_batch_size: 2 # Number of vectorised gradient updates per device.
-rollout_length: 128 # Number of environment steps per vectorised environment.
+rollout_length: 300 # Number of environment steps per vectorised environment.
 ppo_epochs: 4 # Number of ppo epochs per training data batch.
 num_minibatches: 2 # Number of minibatches per ppo epoch.
 gamma: 0.99 # Discounting factor.

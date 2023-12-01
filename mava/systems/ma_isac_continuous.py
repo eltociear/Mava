@@ -489,6 +489,7 @@ def main(_config: Dict) -> None:
 
         evaluator_output.episodes_info["steps_per_second"] = steps_per_rollout / elapsed_time
         log(evaluator_output, t_env=(eval_i + 1) * steps_per_rollout, trainer_metric=False)
+    return jnp.ravel(evaluator_output.episodes_info["episode_return"]).mean()
 
 
 @hydra.main(config_path="../configs", config_name="default_ff_isac.yaml", version_base="1.2")
@@ -498,9 +499,11 @@ def hydra_entry_point(cfg: DictConfig) -> None:
     cfg: Dict = OmegaConf.to_container(cfg, resolve=True)
 
     # Run experiment.
-    main(cfg)
+    output=main(cfg)
 
     print(f"{Fore.CYAN}{Style.BRIGHT}ISAC experiment completed{Style.RESET_ALL}")
+
+    return output
 
 
 if __name__ == "__main__":

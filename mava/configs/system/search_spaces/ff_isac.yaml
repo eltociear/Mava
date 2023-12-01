@@ -1,0 +1,5 @@
+system.batch_size: choice(8192,1024,256)
+system.num_minibatches: choice(128,32,8)
+system.rollout_length: choice(4,300,1000) 
+system.rb_size: choice(1000000,100000,3000) 
+system.lr: tag(log, interval(1e-5, 1e-3))

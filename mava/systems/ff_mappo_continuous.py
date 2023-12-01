@@ -15,7 +15,7 @@
 import copy
 import time
 from typing import Any, Dict, Sequence, Tuple
-
+import flax.linen as nn
 import chex
 import distrax
 import flax.linen as nn
@@ -73,9 +73,10 @@ class Actor(nn.Module):
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
         )(x)
 
-        actor_log_std = nn.Dense(
+        """actor_log_std = nn.Dense(
             self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0)
-        )(x)
+        )(x)"""
+        actor_log_std = self.param('log_std', nn.initializers.zeros, (self.action_dim,))
 
 
         # masked_logits = jnp.where(
@@ -642,7 +643,7 @@ def run_experiment(_config: Dict) -> None:
         )
 
 
-@hydra.main(config_path="../configs", config_name="default_ff_ippo.yaml", version_base="1.2")
+@hydra.main(config_path="../configs", config_name="default_ff_mappo.yaml", version_base="1.2")
 def hydra_entry_point(cfg: DictConfig) -> None:
     """Experiment entry point."""
     # Convert config to python dict.
@@ -651,7 +652,7 @@ def hydra_entry_point(cfg: DictConfig) -> None:
     # Run experiment.
     run_experiment(cfg)
 
-    print(f"{Fore.CYAN}{Style.BRIGHT}IPPO experiment completed{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{Style.BRIGHT}MAPPO experiment completed{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
