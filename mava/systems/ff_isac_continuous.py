@@ -128,11 +128,7 @@ class Critic(nn.Module):
 
         x = nn.relu(nn.Dense(128)(x))
         x = nn.relu(nn.Dense(128)(x))
-        qs = nn.Dense(1)(x)
-
-        # TODO: check this is correct
-        # masked_qs = jnp.where(observation.action_mask, qs, -jnp.inf)
-        return qs
+        return nn.Dense(1)(x)
 
 
 def get_learner_fn(
@@ -226,7 +222,6 @@ def get_learner_fn(
 
         # todo: do a single pmean over a tuple of these?
         # is that more performant?
-        # todo: add this back in when pmapping
         actor_grads = jax.lax.pmean(actor_grads, "batch")
         critic_grads = jax.lax.pmean(critic_grads, "batch")
         alpha_grads = jax.lax.pmean(alpha_grads, "batch")
@@ -273,6 +268,8 @@ def get_learner_fn(
             "mean_q": jnp.mean(next_q),
         }
         losses = jax.lax.pmean(losses, "device")
+        losses = jax.lax.pmean(losses, "batch")
+
         learner_state = LearnerState(
             params=Params(actor=actor_params, critic=critic_params, log_alpha=log_alpha),
             opt_states=new_opt_states,
@@ -303,7 +300,7 @@ def get_learner_fn(
 
         # `learner_state.timestep` is the obs and timestep is next obs
         done = (1 - timestep.discount).astype(bool)
-        obs = learner_state.timestep.observation  # todo - save whole obs?
+        obs = learner_state.timestep.observation
         transition = Transition(obs=obs, action=action, reward=timestep.reward, done=done)
         learner_state = learner_state._replace(
             env_state=env_state, timestep=timestep, key=action_key[0]
@@ -353,9 +350,6 @@ def get_learner_fn(
     def act_and_learn(
         learner_state: LearnerState, buffer_state: BufferState[Transition]
     ) -> Tuple[State, Tuple[Dict, Dict]]:
-        # I'm not sure the None in the vmap works here.
-        # We replicate the buffer state, but each proc also edits the state,
-        # so how are they combined?
         n_steps = config["system"]["num_updates"] // config["arch"]["num_evaluation"]
         batched_update_step = jax.vmap(_act_and_log, in_axes=(0, None), axis_name="batch")
         (learner_state, buffer_state), (rollout_metrics, losses) = jax.lax.scan(
