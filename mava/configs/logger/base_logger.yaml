@@ -5,18 +5,18 @@ base_exp_path: results # Base path for logging.
 use_json: True # Whether to log marl-eval style to json files.
 
 # --- Neptune logging ---
-use_neptune: False
+use_neptune: True
 
 # --- Other logger kwargs ---
 kwargs:
   neptune_project: Instadeep/Mava
-  neptune_tag: [rware]
-  json_path: ~ # If set, json files will be logged to a set path so that multiple experiments can
+  neptune_tag: [lbf]
+  json_path: lbf_exp # If set, json files will be logged to a set path so that multiple experiments can
     # write to the same json file for easy downstream aggregation and plotting with marl-eval.
 
 # --- Checkpointing ---
 checkpointing:
-  save_model: True # Whether to save model checkpoints.
+  save_model: False # Whether to save model checkpoints.
   save_args:
     save_interval_steps: 1 # Number of steps between saving checkpoints.
     max_to_keep: 1 # Maximum number of checkpoints to keep.

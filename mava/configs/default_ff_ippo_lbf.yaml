@@ -3,3 +3,4 @@ defaults:
   - arch: anakin
   - system: ff_ippo
   - env: lbf
+  - _self_ 
