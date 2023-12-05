@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Logger setup."""
-from typing import Dict, Optional, Protocol
+from typing import Callable, Dict, Optional, Protocol, Tuple
 
 import jax.numpy as jnp
 import numpy as np
@@ -36,7 +36,7 @@ class LogFn(Protocol):
         ...
 
 
-def get_logger_tools(logger: Logger) -> LogFn:  # noqa: CCR001
+def get_logger_tools(logger: Logger) -> Tuple[LogFn, Callable]:  # noqa: CCR001
     """Get the logger function."""
 
     def log(
@@ -122,10 +122,10 @@ def get_logger_tools(logger: Logger) -> LogFn:  # noqa: CCR001
 
         return float(np.mean(episodes_return))
 
-    return log
+    return log, logger.close
 
 
-def logger_setup(config: Dict) -> LogFn:
+def logger_setup(config: Dict) -> Tuple[LogFn, Callable]:
     """Setup the logger."""
     logger = Logger(config)
     return get_logger_tools(logger)

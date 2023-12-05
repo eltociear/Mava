@@ -684,7 +684,7 @@ def run_experiment(_config: Dict) -> None:
     """Runs experiment."""
     # Logger setup
     config = copy.deepcopy(_config)
-    log = logger_setup(config)
+    log, _ = logger_setup(config)
 
     # Create envs
     generator = RandomGenerator(**config["env"]["scenario"]["task_config"])

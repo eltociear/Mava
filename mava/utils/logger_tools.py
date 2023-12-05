@@ -85,6 +85,11 @@ class Logger:
             seed=cfg["system"]["seed"],
         )
 
+    def close(self) -> None:
+        """Close the logger."""
+        if self.use_neptune:
+            self.neptune_logger.stop()
+
     def log_stat(
         self,
         key: str,
