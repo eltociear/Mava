@@ -499,7 +499,7 @@ def run_experiment(_config: Dict) -> None:
     """Runs experiment."""
     # Logger setup
     config = copy.deepcopy(_config)
-    log = logger_setup(config)
+    log, logger = logger_setup(config)
 
     # Create the enviroments for train and eval.
     env, eval_env = make(config=config)
@@ -640,6 +640,7 @@ def run_experiment(_config: Dict) -> None:
             absolute_metric=True,
         )
 
+    logger.neptune_logger.stop()
 
 @hydra.main(config_path="../configs", config_name="default_ff_ippo.yaml", version_base="1.2")
 def hydra_entry_point(cfg: DictConfig) -> None:
