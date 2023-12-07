@@ -1,4 +1,5 @@
 defaults:
+  - _self_
   - logger: ff_mappo
   - arch: anakin
   - system: ff_mappo
