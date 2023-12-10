@@ -5,7 +5,7 @@ base_exp_path: results # Base path for logging.
 use_json: False # Whether to log marl-eval style to json files.
 
 # --- Neptune logging ---
-use_neptune: True
+use_neptune: False
 
 # --- Other logger kwargs ---
 kwargs:
