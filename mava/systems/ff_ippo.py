@@ -499,7 +499,7 @@ def run_experiment(_config: Dict) -> None:
     """Runs experiment."""
     # Logger setup
     config = copy.deepcopy(_config)
-    log, _ = logger_setup(config)
+    log, close_logger = logger_setup(config)
 
     # Create the enviroments for train and eval.
     env, eval_env = make(config=config)
@@ -639,6 +639,9 @@ def run_experiment(_config: Dict) -> None:
             t_env=steps_per_rollout * (i + 1),
             absolute_metric=True,
         )
+
+        # Close logger when the experiment is done.
+        close_logger()
 
 
 @hydra.main(config_path="../configs", config_name="default_ff_ippo.yaml", version_base="1.2")
