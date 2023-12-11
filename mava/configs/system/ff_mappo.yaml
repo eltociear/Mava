@@ -1,6 +1,6 @@
 # --- Defaults FF-MAPPO ---
 
-num_updates: 200 # Number of updates
+num_updates: 150 # Number of updates
 seed: 30
 
 # --- Agent observations ---
