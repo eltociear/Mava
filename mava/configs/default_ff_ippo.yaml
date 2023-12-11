@@ -1,5 +1,4 @@
 defaults:
-  - _self_
   - logger: ff_ippo
   - arch: anakin
   - system: ff_ippo

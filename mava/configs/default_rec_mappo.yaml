@@ -1,5 +1,4 @@
 defaults:
-  - _self_
   - logger: rec_mappo
   - arch: anakin
   - system: rec_mappo
