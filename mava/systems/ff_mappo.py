@@ -645,6 +645,8 @@ def run_experiment(_config: Dict) -> None:
     # Close logger when the experiment is done.
     close_logger()
 
+    return episode_return
+
 
 @hydra.main(config_path="../configs", config_name="default_ff_mappo.yaml", version_base="1.2")
 def hydra_entry_point(cfg: DictConfig) -> None:
@@ -653,9 +655,11 @@ def hydra_entry_point(cfg: DictConfig) -> None:
     cfg: Dict = OmegaConf.to_container(cfg, resolve=True)
 
     # Run experiment.
-    run_experiment(cfg)
+    episode_return = run_experiment(cfg)
 
     print(f"{Fore.CYAN}{Style.BRIGHT}MAPPO experiment completed{Style.RESET_ALL}")
+
+    return episode_return
 
 
 if __name__ == "__main__":
