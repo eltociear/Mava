@@ -3,3 +3,17 @@ defaults:
   - arch: anakin
   - system: rec_mappo
   - env: rware
+  - system/search_spaces@hydra.sweeper.params: ${system}
+  - _self_
+  - override hydra/sweeper: optuna
+  - override hydra/sweeper/sampler: tpe
+
+hydra:
+    sweeper:
+        sampler:
+            seed: 234
+        direction: maximize # maximize
+        study_name: rware-sweep
+        storage: null
+        n_trials: 30
+        n_jobs: 1
