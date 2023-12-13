@@ -174,7 +174,7 @@ class JsonWriter:
         seed: int,
     ):
         self.path = path
-        self.file_name = "metrics.json"
+        self.file_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_metrics.json"
         self.run_data: Dict = {"absolute_metrics": {}}
 
         # If the file already exists, load it

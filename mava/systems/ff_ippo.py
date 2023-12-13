@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import copy
+import os
 import time
+from datetime import datetime
 from typing import Any, Dict, Sequence, Tuple
 
 import chex
@@ -499,7 +501,7 @@ def run_experiment(_config: Dict) -> None:
     """Runs experiment."""
     # Logger setup
     config = copy.deepcopy(_config)
-    log = logger_setup(config)
+    log, logger = logger_setup(config)
 
     # Create the enviroments for train and eval.
     env, eval_env = make(config=config)
@@ -639,6 +641,39 @@ def run_experiment(_config: Dict) -> None:
             t_env=steps_per_rollout * (i + 1),
             absolute_metric=True,
         )
+
+    def find_latest_json(directory):
+        # Step 1: List all files in the directory
+        files = os.listdir(directory)
+
+        # Step 2: Filter for JSON files
+        json_files = [f for f in files if f.endswith(".json")]
+
+        # Step 3: Sort the files by date
+        json_files.sort(key=lambda x: datetime.strptime(x.split("_")[0], "%Y%m%d%H%M%S"))
+
+        # Step 4: Select the most recent file
+        latest_file = json_files[-1] if json_files else None
+
+        if latest_file:
+            # Step 5: Read and dump the file to Neptune
+            print(f"LATEST FILE NAME: {latest_file}")
+            # with open(os.path.join(directory, latest_file), 'r') as file:
+            #     data = json.load(file)
+            data_path = os.path.join(directory, latest_file)
+
+        else:
+            print("No JSON files found in the directory.")
+
+        return data_path, latest_file
+
+    data_path, file_name = find_latest_json(
+        f"{config['logger']['base_exp_path']}/json/{config['logger']['kwargs']['json_path']}"
+    )
+
+    if config["logger"]["use_neptune"]:
+        logger.neptune_logger[f"metrics/{file_name}"].upload(data_path)
+        logger.neptune_logger.stop()
 
 
 @hydra.main(config_path="../configs", config_name="default_ff_ippo.yaml", version_base="1.2")
