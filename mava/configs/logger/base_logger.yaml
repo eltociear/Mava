@@ -11,7 +11,7 @@ use_neptune: True
 kwargs:
   neptune_project: Instadeep/Mava
   neptune_tag: [lbf]
-  json_path: lbf_exp_10_envs # If set, json files will be logged to a set path so that multiple experiments can
+  json_path: lbf_exp_16_envs # If set, json files will be logged to a set path so that multiple experiments can
     # write to the same json file for easy downstream aggregation and plotting with marl-eval.
 
 # --- Checkpointing ---

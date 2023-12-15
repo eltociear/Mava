@@ -1,9 +1,9 @@
 defaults:
     - base_logger
 
-system_name: rec_mappo
+system_name: rec_mappo_16_envs
 
 # --- Other logger kwargs ---
 kwargs:
   neptune_project: Instadeep/Mava
-  neptune_tag: [rec-mappo, lbf_exp_10_envs]
+  neptune_tag: [rec-mappo, new-lbf_exp_16_envs]
