@@ -1,0 +1,5 @@
+system.lr: tag(log, interval(1e-4, 1e-2))
+system.recurrent_chunk_size: choice(32, 64, 128)
+system.ppo_epochs: choice(2, 4, 8)
+system.num_minibatches: choice(2, 4, 8)
+system.ent_coef: tag(log, interval(1e-5, 1e-2))

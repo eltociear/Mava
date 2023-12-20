@@ -2,4 +2,18 @@ defaults:
   - logger: rec_mappo
   - arch: anakin
   - system: rec_mappo
-  - env: rware
+  - env: smax
+  - system/search_spaces@hydra.sweeper.params: ${system}
+  - _self_
+  - override hydra/sweeper: optuna
+  - override hydra/sweeper/sampler: tpe
+
+hydra:
+    sweeper:
+        sampler:
+            seed: 234
+        direction: maximize # maximize
+        study_name: smax-sweep
+        storage: null
+        n_trials: 70
+        n_jobs: 1

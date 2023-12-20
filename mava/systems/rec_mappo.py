@@ -710,8 +710,10 @@ def run_experiment(_config: Dict) -> None:  # noqa: CCR001
     """Runs experiment."""
     # Logger setup
     config = copy.deepcopy(_config)
-    log = logger_setup(config)
-
+    log, logger = logger_setup(config)
+    if config["system"]["lr"]:
+        config["system"]["actor_lr"] = config["system"]["lr"]
+        config["system"]["critic_lr"] = config["system"]["lr"]
     # Set recurrent chunk size.
     if config["system"]["recurrent_chunk_size"] is None:
         config["system"]["recurrent_chunk_size"] = config["system"]["rollout_length"]
@@ -859,6 +861,10 @@ def run_experiment(_config: Dict) -> None:  # noqa: CCR001
             t_env=steps_per_rollout * (i + 1),
             absolute_metric=True,
         )
+    logger.neptune_logger.stop()
+    if "won_episode" in evaluator_output.episodes_info:
+        return (jnp.sum(evaluator_output.episodes_info["won_episode"]) / logger.num_eval_episodes) * 100
+    return jnp.ravel(evaluator_output.episodes_info["episode_return"]).mean()
 
 
 @hydra.main(config_path="../configs", config_name="default_rec_mappo.yaml", version_base="1.2")
@@ -868,10 +874,10 @@ def hydra_entry_point(cfg: DictConfig) -> None:
     cfg: Dict = OmegaConf.to_container(cfg, resolve=True)
 
     # Run experiment.
-    run_experiment(cfg)
+    output=run_experiment(cfg)
 
     print(f"{Fore.CYAN}{Style.BRIGHT}Recurrent MAPPO experiment completed{Style.RESET_ALL}")
-
+    return output
 
 if __name__ == "__main__":
     hydra_entry_point()
