@@ -1,1 +1,1 @@
-python mava/systems/rec_ippo.py -m env.scenario=3s_vs_5z && python mava/systems/rec_ippo.py -m env.scenario=10m_vs_11m && python mava/systems/rec_mappo.py -m env.scenario=3s_vs_5z && python mava/systems/rec_mappo.py -m env.scenario=10m_vs_11m
+python mava/systems/rec_ippo.py -m

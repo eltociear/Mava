@@ -15,5 +15,5 @@ hydra:
         direction: maximize # maximize
         study_name: smax-sweep
         storage: null
-        n_trials: 70
+        n_trials: 50
         n_jobs: 1
